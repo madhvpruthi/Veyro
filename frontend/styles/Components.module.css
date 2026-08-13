@@ -1,0 +1,241 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+
+  min-height: 40px;
+  padding: 0.65rem 1rem;
+
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+
+  color: var(--text-main);
+  background: transparent;
+
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  text-decoration: none;
+
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+
+  outline: none;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Primary */
+
+.btnPrimary {
+  background: var(--primary-accent);
+  color: #fff;
+  border-color: var(--primary-accent);
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: var(--primary-accent-hover);
+  border-color: var(--primary-accent-hover);
+}
+
+/* Secondary */
+
+.btnSecondary {
+  background: #1a1f26;
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+
+.btnSecondary:hover:not(:disabled) {
+  background: #20262e;
+  border-color: var(--border-color-hover);
+  color: var(--text-main);
+}
+
+/* Outline */
+
+.btnOutline {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+
+.btnOutline:hover:not(:disabled) {
+  background: var(--primary-soft);
+  border-color: rgba(79, 140, 255, 0.55);
+  color: var(--text-main);
+}
+
+/* Danger */
+
+.btnDanger {
+  background: transparent;
+  color: #f08a91;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.btnDanger:hover:not(:disabled) {
+  background: var(--danger-soft);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #ff9ca3;
+}
+
+/* Sizes */
+
+.btnSm {
+  min-height: 34px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.82rem;
+  border-radius: 8px;
+}
+
+.btnLg {
+  min-height: 46px;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
+  border-radius: var(--radius-md);
+}
+
+/* Meeting cards */
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.2rem;
+
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+
+  box-shadow: var(--shadow-sm);
+}
+
+.card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-color-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cardTitle {
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.35;
+}
+
+.cardSubtitle {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Status */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+
+  padding: 0.25rem 0.55rem;
+
+  border-radius: 6px;
+  border: 1px solid transparent;
+
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.badgeUpcoming {
+  background: rgba(79, 140, 255, 0.10);
+  color: #8db3ff;
+  border-color: rgba(79, 140, 255, 0.22);
+}
+
+.badgeLive {
+  background: rgba(60, 207, 145, 0.10);
+  color: #72ddb0;
+  border-color: rgba(60, 207, 145, 0.25);
+}
+
+.badgeRecent {
+  background: #181d23;
+  color: var(--text-muted);
+  border-color: var(--border-color);
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.cardMetaItem {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.codeBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}

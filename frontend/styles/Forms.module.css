@@ -1,0 +1,151 @@
+.formContainer {
+  width: min(100% - 2rem, 560px);
+  margin: 3rem auto;
+
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+
+  padding: 2rem;
+
+  box-shadow: var(--shadow-lg);
+}
+
+.formHeader {
+  margin-bottom: 1.8rem;
+}
+
+.formTitle {
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 0.45rem;
+  letter-spacing: -0.4px;
+}
+
+.formSubtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.label {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.input,
+.textarea,
+.select {
+  width: 100%;
+
+  background: var(--bg-input);
+  color: var(--text-main);
+
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+
+  padding: 0.78rem 0.9rem;
+
+  font-size: 0.9rem;
+
+  outline: none;
+
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.input:hover,
+.textarea:hover,
+.select:hover {
+  border-color: var(--border-color-hover);
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+  background: #12171d;
+  border-color: rgba(79, 140, 255, 0.65);
+  box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.08);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--text-dim);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 110px;
+  line-height: 1.5;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.previewBox {
+  background: #10151b;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.previewTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  margin-bottom: 0.5rem;
+}
+
+.alertSuccess,
+.alertError {
+  padding: 0.85rem 1rem;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.86rem;
+}
+
+.alertSuccess {
+  background: var(--success-soft);
+  border: 1px solid rgba(60, 207, 145, 0.22);
+  color: #7ee2b7;
+}
+
+.alertError {
+  background: var(--danger-soft);
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  color: #f39ca1;
+}
+
+@media (max-width: 640px) {
+  .formContainer {
+    padding: 1.35rem;
+    margin: 1.5rem auto;
+  }
+
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+
+  .formTitle {
+    font-size: 1.5rem;
+  }
+}
