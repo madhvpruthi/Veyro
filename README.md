@@ -20,13 +20,17 @@
 - Invite users directly using `@username`
 - Meeting invitations with sender/receiver relationships and status
 - Participant registration
+- Admin/Moderator can do any operations
+- Admin/Moderator can mute anyone
+- Admin/Moderator can turn off anyone's video
+- Admin/Moderator can turn off reactions or can remove anyone
 - Shareable meeting links
 - Profile dropdown with account details, invitations, and logout
-- Self-hosted Jitsi audio/video meetings
+- Various Video Background Options during ongoing video conferencing
 - Microphone, camera, hang-up, and tile-view controls
-- Custom Veyro meeting interface
 - Responsive dashboard and meeting UI
 - Toast notifications and loading states
+- 
 
 ## Technology Stack
 
@@ -43,7 +47,6 @@
 - **FastAPI**
 - **Uvicorn**
 - **SQLAlchemy**
-- **Pydantic**
 - **email-validator**
 - **Alembic**
 - **SQLite**
