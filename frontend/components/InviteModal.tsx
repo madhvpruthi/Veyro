@@ -3,7 +3,10 @@ import React, {
   useState,
 } from 'react';
 
-import { UserProfile } from '../lib/firebase';
+import {
+  UserProfile,
+  searchUsersByUsername,
+} from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 
 import Button from './Button';
@@ -14,9 +17,12 @@ const API_BASE =
   'http://127.0.0.1:8000';
 
 interface SearchUser {
-  id: number;
+  id?: number;
+  uid: string;
   name: string;
   username: string;
+  email: string;
+  isGuest: boolean;
 }
 
 interface InviteModalProps {
@@ -86,197 +92,241 @@ const InviteModal: React.FC<
   // Search users
   // --------------------------------------------------
 
-  useEffect(() => {
-    const query =
-      usernameInput
-        .trim()
-        .replace(/^@/, '')
-        .toLowerCase();
+ // --------------------------------------------------
+// Search users from Firebase
+// --------------------------------------------------
 
-    if (query.length < 2) {
-      setResults([]);
-      setSearching(false);
-      return;
-    }
+useEffect(() => {
+  const queryText = usernameInput
+    .trim()
+    .replace(/^@/, '')
+    .toLowerCase();
 
-    const timer =
-      window.setTimeout(
-        async () => {
-          setSearching(true);
-          setError('');
+  if (queryText.length < 2) {
+    setResults([]);
+    setSearching(false);
+    return;
+  }
 
-          try {
-            const response =
-              await fetch(
-                `${API_BASE}/api/auth/users/search?username=${encodeURIComponent(
-                  query
-                )}&exclude_id=${backendUserId}`
-              );
+  const timer = window.setTimeout(
+    async () => {
+      setSearching(true);
+      setError('');
 
-            if (!response.ok) {
-              throw new Error(
-                'Unable to search users.'
-              );
-            }
+      try {
+        const firebaseUsers =
+          await searchUsersByUsername(queryText);
 
-            const data =
-              await response.json();
+        const filteredUsers =
+          firebaseUsers.filter(
+            (user) =>
+              user.uid !== currentUser.uid &&
+              !user.isGuest
+          );
 
-            setResults(
-              Array.isArray(data)
-                ? data
-                : []
-            );
-          } catch (error) {
-            console.error(
-              'User search failed:',
-              error
-            );
+        setResults(
+          filteredUsers.map((user) => ({
+            uid: user.uid,
+            name: user.name,
+            username: user.username,
+            email: user.email,
+            isGuest: user.isGuest,
+          }))
+        );
+      } catch (error) {
+        console.error(
+          'Firebase user search failed:',
+          error
+        );
 
-            setResults([]);
+        setResults([]);
 
-            setError(
-              'Unable to search users.'
-            );
-          } finally {
-            setSearching(false);
-          }
-        },
-        300
-      );
+        setError(
+          'Unable to search users.'
+        );
+      } finally {
+        setSearching(false);
+      }
+    },
+    300
+  );
 
-    return () => {
-      window.clearTimeout(
-        timer
-      );
-    };
-  }, [
-    usernameInput,
-    backendUserId,
-  ]);
+  return () => {
+    window.clearTimeout(timer);
+  };
+}, [
+  usernameInput,
+  currentUser.uid,
+]);
 
   // --------------------------------------------------
   // Send one invitation
   // --------------------------------------------------
 
-  const handleSendInvite =
-    async (
-      receiver: SearchUser
-    ) => {
-      if (!backendUserId) {
-        setError(
-          'Your account is still being synchronized.'
-        );
+  const handleSendInvite = async (
+  receiver: SearchUser
+) => {
+  if (!backendUserId) {
+    setError(
+      'Your account is still being synchronized.'
+    );
 
-        return;
-      }
+    return;
+  }
 
-      setSendingId(
-        receiver.id
+  setSendingId(
+    receiver.id ?? -1
+  );
+
+  setError('');
+  setSuccess('');
+
+  try {
+    // --------------------------------------------------
+    // 1. Make sure the Firebase user exists in SQLite
+    // --------------------------------------------------
+
+    let receiverBackendId = receiver.id;
+
+    if (!receiverBackendId) {
+      const syncResponse = await fetch(
+        `${API_BASE}/api/auth/sync`,
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type':
+              'application/json',
+          },
+
+          body: JSON.stringify({
+            firebase_uid: receiver.uid,
+            name: receiver.name,
+            username: receiver.username,
+            email: receiver.email,
+            is_guest: false,
+          }),
+        }
       );
 
-      setError('');
-      setSuccess('');
+      const syncResult =
+        await syncResponse
+          .json()
+          .catch(() => null);
 
-      try {
-        // Get actual meeting from SQLite.
-        const meetingResponse =
-          await fetch(
-            `${API_BASE}/api/meetings/${encodeURIComponent(
-              meetingId
-            )}`
-          );
-
-        if (
-          !meetingResponse.ok
-        ) {
-          throw new Error(
-            'Meeting could not be found.'
-          );
-        }
-
-        const meeting =
-          await meetingResponse.json();
-
-        // Create invitation.
-        const invitationResponse =
-          await fetch(
-            `${API_BASE}/api/invitations`,
-            {
-              method: 'POST',
-
-              headers: {
-                'Content-Type':
-                  'application/json',
-              },
-
-              body: JSON.stringify({
-                meeting_id:
-                  Number(
-                    meeting.id
-                  ),
-
-                sender_id:
-                  Number(
-                    backendUserId
-                  ),
-
-                receiver_id:
-                  Number(
-                    receiver.id
-                  ),
-              }),
-            }
-          );
-
-        const result =
-          await invitationResponse
-            .json()
-            .catch(() => null);
-
-        if (
-          !invitationResponse.ok
-        ) {
-          throw new Error(
-            result?.detail ||
-              'Failed to send invitation.'
-          );
-        }
-
-        setInvitedIds(
-          (previous) => {
-            const next =
-              new Set(
-                previous
-              );
-
-            next.add(
-              receiver.id
-            );
-
-            return next;
-          }
-        );
-
-        setSuccess(
-          `Invitation sent to @${receiver.username}`
-        );
-      } catch (error: any) {
-        console.error(
-          'Invitation failed:',
-          error
-        );
-
-        setError(
-          error?.message ||
-            'Failed to send invitation.'
-        );
-      } finally {
-        setSendingId(
-          null
+      if (!syncResponse.ok) {
+        throw new Error(
+          syncResult?.detail ||
+          'Unable to synchronize the selected user.'
         );
       }
-    };
+
+      receiverBackendId =
+        Number(syncResult.id);
+    }
+
+    if (!receiverBackendId) {
+      throw new Error(
+        'Could not determine the selected user ID.'
+      );
+    }
+
+    // --------------------------------------------------
+    // 2. Get actual meeting from SQLite
+    // --------------------------------------------------
+
+    const meetingResponse =
+      await fetch(
+        `${API_BASE}/api/meetings/${encodeURIComponent(
+          meetingId
+        )}`
+      );
+
+    if (!meetingResponse.ok) {
+      throw new Error(
+        'Meeting could not be found.'
+      );
+    }
+
+    const meeting =
+      await meetingResponse.json();
+
+    // --------------------------------------------------
+    // 3. Create invitation
+    // --------------------------------------------------
+
+    const invitationResponse =
+      await fetch(
+        `${API_BASE}/api/invitations`,
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type':
+              'application/json',
+          },
+
+          body: JSON.stringify({
+            meeting_id:
+              Number(meeting.id),
+
+            sender_id:
+              Number(backendUserId),
+
+            receiver_id:
+              Number(receiverBackendId),
+          }),
+        }
+      );
+
+    const result =
+      await invitationResponse
+        .json()
+        .catch(() => null);
+
+    if (!invitationResponse.ok) {
+      throw new Error(
+        result?.detail ||
+        'Failed to send invitation.'
+      );
+    }
+
+    // --------------------------------------------------
+    // 4. Mark invitation as sent
+    // --------------------------------------------------
+
+    setInvitedIds(
+      (previous) => {
+        const next =
+          new Set(previous);
+
+        next.add(
+          Number(receiverBackendId)
+        );
+
+        return next;
+      }
+    );
+
+    setSuccess(
+      `Invitation sent to @${receiver.username}`
+    );
+
+  } catch (error: any) {
+    console.error(
+      'Invitation failed:',
+      error
+    );
+
+    setError(
+      error?.message ||
+      'Failed to send invitation.'
+    );
+
+  } finally {
+    setSendingId(null);
+  }
+};
 
   // --------------------------------------------------
   // Start meeting
@@ -539,9 +589,8 @@ const InviteModal: React.FC<
           {results.map(
             (user) => {
               const alreadyInvited =
-                invitedIds.has(
-                  user.id
-                );
+  user.id !== undefined &&
+  invitedIds.has(user.id);
 
               const isSending =
                 sendingId ===

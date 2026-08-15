@@ -13,6 +13,20 @@ const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ||
   'http://127.0.0.1:8000';
 
+
+  const parseBackendUtc = (value: string): number => {
+  if (!value) {
+    return NaN;
+  }
+
+  const normalized =
+    /(?:Z|[+-]\d{2}:\d{2})$/i.test(value)
+      ? value
+      : `${value}Z`;
+
+  return new Date(normalized).getTime();
+};
+
 interface Invitation {
   id: number;
 
@@ -72,6 +86,10 @@ export default function InvitationList({
     tick,
     setTick,
   ] = useState(0);
+  type FilterType = 'all' | 'received' | 'sent';
+
+const [filter, setFilter] =
+  useState<FilterType>('all');
 
   // --------------------------------------------------
   // Load invitations
@@ -178,16 +196,42 @@ export default function InvitationList({
     () => {
       return [...invitations].sort(
         (a, b) =>
-          new Date(
-            b.created_at
-          ).getTime() -
-          new Date(
-            a.created_at
-          ).getTime()
+          parseBackendUtc(
+  b.created_at
+) -
+parseBackendUtc(
+  a.created_at
+)
       );
     },
     [invitations]
   );
+
+  const filteredItems = useMemo(() => {
+  if (!backendUserId) {
+    return [];
+  }
+
+  if (filter === 'received') {
+    return items.filter(
+      (invitation) =>
+        invitation.receiver_id === backendUserId
+    );
+  }
+
+  if (filter === 'sent') {
+    return items.filter(
+      (invitation) =>
+        invitation.sender_id === backendUserId
+    );
+  }
+
+  return items;
+}, [
+  items,
+  filter,
+  backendUserId,
+]);
 
   // --------------------------------------------------
   // Expiry
@@ -208,11 +252,10 @@ export default function InvitationList({
         return invitation.status;
       }
 
-      const expires =
-        new Date(
-          invitation.expires_at
-        ).getTime();
-
+    const expires =
+  parseBackendUtc(
+    invitation.expires_at
+  );
       if (
         Number.isNaN(expires)
       ) {
@@ -244,6 +287,28 @@ export default function InvitationList({
       return `Expires in ${minutes} min`;
     };
 
+    const isInvitationExpired = (
+  invitation: Invitation
+) => {
+  if (invitation.status === 'expired') {
+    return true;
+  }
+
+  if (invitation.status !== 'pending') {
+    return false;
+  }
+
+  const expiresAt =
+  parseBackendUtc(
+    invitation.expires_at
+  );
+
+  return (
+    !Number.isNaN(expiresAt) &&
+    expiresAt <= Date.now()
+  );
+};
+
   // --------------------------------------------------
   // Age
   // --------------------------------------------------
@@ -252,10 +317,11 @@ export default function InvitationList({
     (
       value: string
     ) => {
-      const timestamp =
-        new Date(
-          value
-        ).getTime();
+      
+        const timestamp =
+  parseBackendUtc(
+    value
+  );
 
       if (
         Number.isNaN(
@@ -409,18 +475,117 @@ export default function InvitationList({
       id="invitations"
     >
       <div
-        className={
-          styles.sectionHeader
-        }
-      >
-        <h2
-          className={
-            styles.sectionTitle
+  className={styles.sectionHeader}
+  style={{
+    alignItems: 'flex-start',
+    flexDirection: 'column',
+    gap: '1rem',
+  }}
+>
+  <div>
+    <h2
+      className={styles.sectionTitle}
+    >
+      Invitations
+    </h2>
+
+    <p
+      style={{
+        margin: '0.35rem 0 0',
+        color: 'var(--text-muted)',
+        fontSize: '0.85rem',
+      }}
+    >
+      Manage your Veyro meeting invitations
+    </p>
+  </div>
+
+  {/* Invitation tabs */}
+  <div
+    style={{
+      width: '100%',
+      maxWidth: '540px',
+      display: 'grid',
+      gridTemplateColumns:
+        'repeat(3, 1fr)',
+      gap: '4px',
+      padding: '4px',
+      borderRadius: '14px',
+      border:
+        '1px solid var(--border-color)',
+      background:
+        'rgba(255,255,255,0.025)',
+    }}
+  >
+    {(
+      [
+        ['all', 'All'],
+        ['received', 'Received'],
+        ['sent', 'Sent'],
+      ] as const
+    ).map(([value, label]) => {
+      const active =
+        filter === value;
+
+      const count =
+        value === 'all'
+          ? items.length
+          : value === 'received'
+          ? items.filter(
+              (invitation) =>
+                invitation.receiver_id ===
+                backendUserId
+            ).length
+          : items.filter(
+              (invitation) =>
+                invitation.sender_id ===
+                backendUserId
+            ).length;
+
+      return (
+        <button
+          key={value}
+          type="button"
+          onClick={() =>
+            setFilter(value)
           }
+          style={{
+            border: 'none',
+            borderRadius: '10px',
+            padding:
+              '0.65rem 0.8rem',
+            background: active
+              ? 'rgba(99,102,241,0.16)'
+              : 'transparent',
+            color: active
+              ? '#fff'
+              : 'var(--text-muted)',
+            cursor: 'pointer',
+            fontSize: '0.84rem',
+            fontWeight: 700,
+            transition:
+              'all 0.2s ease',
+            boxShadow: active
+              ? '0 0 20px rgba(99,102,241,0.12)'
+              : 'none',
+          }}
         >
-          Invitations ({items.length})
-        </h2>
-      </div>
+          {label}{' '}
+          <span
+            style={{
+              opacity: active
+                ? 1
+                : 0.65,
+              marginLeft: '3px',
+            }}
+          >
+            {count}
+          </span>
+        </button>
+      );
+    })}
+  </div>
+</div>
 
       {loading ? (
         <div
@@ -439,7 +604,7 @@ export default function InvitationList({
         >
           {error}
         </div>
-      ) : !items.length ? (
+      ) : !filteredItems.length ? (
         <div
           className={
             styles.invitationEmpty
@@ -449,11 +614,14 @@ export default function InvitationList({
         </div>
       ) : (
         <div
-          className={
-            styles.invitationList
-          }
-        >
-          {items.map(
+  className={styles.invitationList}
+  style={{
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.7rem',
+  }}
+>
+         {filteredItems.map(
             (
               invitation
             ) => {
@@ -471,9 +639,12 @@ export default function InvitationList({
                   ? invitation.receiver_username
                   : invitation.sender_username;
 
-              const isPending =
-                invitation.status ===
-                'pending';
+              const isExpired =
+  isInvitationExpired(invitation);
+
+const isPending =
+  invitation.status === 'pending' &&
+  !isExpired;
 
               const isReceived =
                 !mine;
@@ -483,225 +654,328 @@ export default function InvitationList({
                 invitation.id;
 
               return (
-                <div
-                  className={
-                    styles.invitationCard
-                  }
-                  key={
-                    invitation.id
-                  }
-                >
-                  <div
-                    className={
-                      styles.invitationAvatar
-                    }
-                  >
-                    {otherName?.[0]?.toUpperCase() ||
-                      '?'}
-                  </div>
+  <div
+    className={styles.invitationCard}
+    key={invitation.id}
+    style={{
+      display: 'grid',
+      gridTemplateColumns:
+        '52px minmax(220px, 1.5fr) minmax(180px, 1fr) auto',
+      alignItems: 'center',
+      gap: '1.25rem',
+      padding: '1rem 1.15rem',
+      border:
+        '1px solid var(--border-color)',
+      borderRadius: '14px',
+      background:
+        'rgba(255,255,255,0.025)',
+      transition:
+        'border-color 0.2s ease, background 0.2s ease',
+      minHeight: '86px',
+    }}
+  >
 
-                  <div
-                    className={
-                      styles.invitationMain
-                    }
-                  >
-                    <div
-                      className={
-                        styles.invitationTitle
-                      }
-                    >
-                      {mine ? (
-                        <>
-                          You invited{' '}
-                          <strong>
-                            {otherName}
-                          </strong>
-                        </>
-                      ) : (
-                        <>
-                          <strong>
-                            {otherName}
-                          </strong>{' '}
-                          invited you
-                        </>
-                      )}
-                    </div>
+    {/* Avatar */}
+    <div
+      className={styles.invitationAvatar}
+      style={{
+        width: '46px',
+        height: '46px',
+        minWidth: '46px',
+        borderRadius: '12px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background:
+          'rgba(99,102,241,0.12)',
+        border:
+          '1px solid rgba(99,102,241,0.22)',
+        color: '#a5b4fc',
+        fontWeight: 800,
+        fontSize: '1rem',
+      }}
+    >
+      {otherName?.[0]?.toUpperCase() || '?'}
+    </div>
 
-                    <div
-                      className={
-                        styles.invitationMeta
-                      }
-                    >
-                      {invitation.meeting_title}{' '}
-                      · Room{' '}
-                      {
-                        invitation.room_code
-                      }
-                    </div>
 
-                    <div
-                      className={
-                        styles.invitationTime
-                      }
-                    >
-                      {getAgeLabel(
-                        invitation.created_at
-                      )}
-                    </div>
+    {/* Main information */}
+    <div
+      style={{
+        minWidth: 0,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.4rem',
+          fontSize: '0.95rem',
+          color: 'var(--text-primary)',
+          marginBottom: '0.35rem',
+        }}
+      >
+        {mine ? (
+          <>
+            <span>You invited</span>
+            <strong>{otherName}</strong>
+          </>
+        ) : (
+          <>
+            <strong>{otherName}</strong>
+            <span>invited you</span>
+          </>
+        )}
+      </div>
 
-                    <div
-                      style={{
-                        fontSize:
-                          '0.82rem',
-                        color:
-                          'var(--text-muted)',
-                        marginTop:
-                          '0.2rem',
-                      }}
-                    >
-                      @{otherUsername}
-                    </div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.55rem',
+          flexWrap: 'wrap',
+          color: 'var(--text-muted)',
+          fontSize: '0.78rem',
+        }}
+      >
+        <span>
+          {getAgeLabel(
+            invitation.created_at
+          )}
+        </span>
 
-                    {/* Receiver actions */}
+        <span
+          style={{
+            opacity: 0.35,
+          }}
+        >
+          •
+        </span>
 
-                    {isReceived &&
-                      isPending && (
-                        <div
-                          style={{
-                            display:
-                              'flex',
-                            gap:
-                              '0.6rem',
-                            marginTop:
-                              '0.8rem',
-                          }}
-                        >
-                          <button
-                            onClick={() =>
-                              updateInvitation(
-                                invitation,
-                                'accepted'
-                              )
-                            }
-                            disabled={
-                              isActionRunning
-                            }
-                            style={{
-                              border:
-                                'none',
-                              borderRadius:
-                                '8px',
-                              padding:
-                                '0.45rem 0.8rem',
-                              cursor:
-                                isActionRunning
-                                  ? 'default'
-                                  : 'pointer',
-                              background:
-                                'var(--primary-gradient)',
-                              color:
-                                '#fff',
-                              fontWeight:
-                                700,
-                            }}
-                          >
-                            {isActionRunning
-                              ? '...'
-                              : 'Accept'}
-                          </button>
+        <span>
+          @{otherUsername}
+        </span>
+      </div>
+    </div>
 
-                          <button
-                            onClick={() =>
-                              updateInvitation(
-                                invitation,
-                                'declined'
-                              )
-                            }
-                            disabled={
-                              isActionRunning
-                            }
-                            style={{
-                              border:
-                                '1px solid var(--border-color)',
-                              borderRadius:
-                                '8px',
-                              padding:
-                                '0.45rem 0.8rem',
-                              cursor:
-                                isActionRunning
-                                  ? 'default'
-                                  : 'pointer',
-                              background:
-                                'transparent',
-                              color:
-                                'var(--text-muted)',
-                              fontWeight:
-                                700,
-                            }}
-                          >
-                            Decline
-                          </button>
-                        </div>
-                      )}
 
-                    {/* Sender cancellation */}
+    {/* Meeting information */}
+    <div
+      style={{
+        minWidth: 0,
+      }}
+    >
+      <div
+        style={{
+          color: 'var(--text-primary)',
+          fontSize: '0.84rem',
+          fontWeight: 700,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        {invitation.meeting_title}
+      </div>
 
-                    {mine &&
-                      isPending && (
-                        <div
-                          style={{
-                            marginTop:
-                              '0.8rem',
-                          }}
-                        >
-                          <button
-                            onClick={() =>
-                              updateInvitation(
-                                invitation,
-                                'cancelled'
-                              )
-                            }
-                            disabled={
-                              isActionRunning
-                            }
-                            style={{
-                              border:
-                                '1px solid var(--border-color)',
-                              borderRadius:
-                                '8px',
-                              padding:
-                                '0.4rem 0.75rem',
-                              cursor:
-                                isActionRunning
-                                  ? 'default'
-                                  : 'pointer',
-                              background:
-                                'transparent',
-                              color:
-                                'var(--text-muted)',
-                              fontSize:
-                                '0.8rem',
-                              fontWeight:
-                                700,
-                            }}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      )}
-                  </div>
+      <div
+        style={{
+          marginTop: '0.3rem',
+          color: 'var(--text-muted)',
+          fontSize: '0.76rem',
+        }}
+      >
+        Room {invitation.room_code}
+      </div>
+    </div>
 
-                  <div
-                    className={
-                      styles.invitationStatus
-                    }
-                  >
-                    {getExpiryLabel(
-                      invitation
-                    )}
-                  </div>
-                </div>
-              );
+
+    {/* Right side */}
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        gap: '0.65rem',
+        minWidth: '190px',
+      }}
+    >
+
+      {/* Received + active */}
+      {isReceived &&
+        isPending && (
+          <>
+            <button
+              onClick={() =>
+                updateInvitation(
+                  invitation,
+                  'accepted'
+                )
+              }
+              disabled={
+                isActionRunning
+              }
+              style={{
+                border: 'none',
+                borderRadius: '8px',
+                padding:
+                  '0.48rem 0.85rem',
+                cursor:
+                  isActionRunning
+                    ? 'default'
+                    : 'pointer',
+                background:
+                  'var(--primary-gradient)',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '0.78rem',
+              }}
+            >
+              {isActionRunning
+                ? '...'
+                : 'Accept'}
+            </button>
+
+            <button
+              onClick={() =>
+                updateInvitation(
+                  invitation,
+                  'declined'
+                )
+              }
+              disabled={
+                isActionRunning
+              }
+              style={{
+                border:
+                  '1px solid var(--border-color)',
+                borderRadius: '8px',
+                padding:
+                  '0.48rem 0.85rem',
+                cursor:
+                  isActionRunning
+                    ? 'default'
+                    : 'pointer',
+                background:
+                  'transparent',
+                color:
+                  'var(--text-muted)',
+                fontWeight: 700,
+                fontSize: '0.78rem',
+              }}
+            >
+              Decline
+            </button>
+          </>
+        )}
+
+
+      {/* Sender + active */}
+      {mine &&
+        isPending && (
+          <button
+            onClick={() =>
+              updateInvitation(
+                invitation,
+                'cancelled'
+              )
+            }
+            disabled={
+              isActionRunning
+            }
+            style={{
+              border:
+                '1px solid var(--border-color)',
+              borderRadius: '8px',
+              padding:
+                '0.48rem 0.85rem',
+              cursor:
+                isActionRunning
+                  ? 'default'
+                  : 'pointer',
+              background:
+                'transparent',
+              color:
+                'var(--text-muted)',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+            }}
+          >
+            {isActionRunning
+              ? '...'
+              : 'Cancel'}
+          </button>
+        )}
+
+
+      {/* Expired */}
+      {isExpired && (
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding:
+              '0.4rem 0.7rem',
+            borderRadius: '7px',
+            background:
+              'rgba(148,163,184,0.08)',
+            border:
+              '1px solid rgba(148,163,184,0.15)',
+            color:
+              'var(--text-muted)',
+            fontSize: '0.76rem',
+            fontWeight: 700,
+          }}
+        >
+          Expired
+        </span>
+      )}
+
+
+      {/* Other final statuses */}
+      {!isExpired &&
+        !isPending && (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding:
+                '0.4rem 0.7rem',
+              borderRadius: '7px',
+              background:
+                'rgba(148,163,184,0.08)',
+              border:
+                '1px solid rgba(148,163,184,0.15)',
+              color:
+                'var(--text-muted)',
+              fontSize: '0.76rem',
+              fontWeight: 700,
+              textTransform: 'capitalize',
+            }}
+          >
+            {invitation.status}
+          </span>
+        )}
+
+
+      {/* Active expiry */}
+      {isPending && (
+        <span
+          style={{
+            color:
+              'var(--text-muted)',
+            fontSize: '0.74rem',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {getExpiryLabel(
+            invitation
+          )}
+        </span>
+      )}
+    </div>
+  </div>
+);
             }
           )}
         </div>

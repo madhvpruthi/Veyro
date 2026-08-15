@@ -84,6 +84,33 @@ export async function findUserByUsername(username: string): Promise<UserProfile 
   return null;
 }
 
+export async function searchUsersByUsername(
+  username: string
+): Promise<UserProfile[]> {
+  const cleanUser = username
+    .toLowerCase()
+    .trim()
+    .replace(/^@/, '');
+
+  if (cleanUser.length < 2) {
+    return [];
+  }
+
+  const usersRef = collection(db, 'users');
+
+  const q = query(
+    usersRef,
+    where('username', '>=', cleanUser),
+    where('username', '<=', cleanUser + '\uf8ff')
+  );
+
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs
+    .map((doc) => doc.data() as UserProfile)
+    .filter((user) => !user.isGuest);
+}
+
 // Keep your existing invitation helper.
 export async function sendMeetingInvite(
   sender: UserProfile,
